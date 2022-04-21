@@ -2,10 +2,10 @@ package jankovicsandras.imagetracer;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
+import java.io.*;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 
 import javax.imageio.ImageIO;
@@ -13,28 +13,17 @@ import javax.imageio.ImageIO;
 
 public class ImageTracer {
 
-    public static String versionnumber = "1.1.3";
+    public static String versionNumber = "1.1.3";
 
     public ImageTracer() {
     }
 
-
-    public static void main(String[] args) {
+    public static String ConvertToSvg(String[] args, String encodedImage) {
         try {
-            if (args.length < 1) {
-                System.out.println("ERROR: there's no input filename. Basic usage: \r\n\r\njava -jar ImageTracer.jar <filename>" + "\r\n\r\nor\r\n\r\njava -jar ImageTracer.jar help");
-            } else if (arraycontains(args, "help") > -1) {
-                System.out.println("Example usage:\r\n\r\njava -jar ImageTracer.jar <filename> outfilename test.svg" +
-                        "\nltres 1 qtres 1 pathomit 1 numberofcolors 128 colorquantcycles 15" +
-                        "\nscale 1 roundcoords 1 lcpr 0 qcpr 0 desc 1 viewbox 0  blurradius 0 blurdelta 20" +
-                        "\nOnly <filename> is mandatory, if some of the other optional parameters are missing, they will be set to these defaults." +
-                        "\nWarning: if outfilename is not specified, then <filename>.svg will be overwritten." +
-                        "\nSee https://github.com/jankovicsandras/imagetracerjava for details." +
-                        "\nThis is version " + versionnumber);
+            if (encodedImage.equals("")) {
+                System.out.println("ERROR: there's no input filename.");
             } else {
-
                 // Parameter parsing
-                String outFileName = args[0];
                 HashMap<String, Float> options = new HashMap<>();
                 String[] parameterNames = {
                         "ltres",
@@ -56,31 +45,23 @@ public class ImageTracer {
                 for (String parameterName : parameterNames) {
                     j = arraycontains(args, parameterName);
                     if (j > -1) {
-                        if (parameterName.equals("outFileName")) {
-                            if (j < (args.length - 1)) {
-                                outFileName = args[j + 1];
-                            }
-                        } else {
-                            f = parsenext(args, j);
-                            if (f > -1) {
-                                options.put(parameterName, f);
-                            }
+                        f = parsenext(args, j);
+                        if (f > -1) {
+                            options.put(parameterName, f);
                         }
                     }
-                }// End of parameterNames loop
+                }
 
                 options = checkoptions(options);
 
-                // Loading image, tracing, rendering, saving output file
-                outFileName = removeExtension(outFileName);
-                saveString(outFileName + ".svg", imageToSVG(args[0], options));
-
-            }// End of parameter parsing and processing
+                return imageToSVG(encodedImage, options);
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }// End of main()
+        return null;
+    }
 
 
     public static int arraycontains(String[] arr, String str) {
@@ -133,30 +114,16 @@ public class ImageTracer {
         }
     }
 
-
-    // Saving a String as a file
-    public static void saveString(String filename, String str) throws Exception {
-        File file = new File(filename);
-        // if file doesnt exists, then create it
-        if (!file.exists()) {
-            file.createNewFile();
-        }
-        FileWriter fw = new FileWriter(file.getAbsoluteFile());
-        BufferedWriter bw = new BufferedWriter(fw);
-        bw.write(str);
-        bw.close();
-    }
-
     // Loading a file to ImageData, ARGB byte order
-    public static ImageData loadImageData(String filename) throws Exception {
-
-        BufferedImage image = ImageIO.read(new File(filename));
+    public static ImageData loadImageData(String encodedImage) throws Exception {
+        byte[] decodedBytes = Base64.getDecoder().decode(encodedImage);
+        InputStream inputStream = new ByteArrayInputStream(decodedBytes);
+        BufferedImage image = ImageIO.read(inputStream);
         return loadImageData(image);
     }
 
 
     public static ImageData loadImageData(BufferedImage image) {
-
         int width = image.getWidth();
         int height = image.getHeight();
         int[] rawdata = image.getRGB(0, 0, width, height, null, 0, width);
@@ -210,10 +177,12 @@ public class ImageTracer {
     ////////////////////////////////////////////////////////////
 
     // Loading an image from a file, tracing when loaded, then returning the SVG String
-    public static String imageToSVG(String filename, HashMap<String, Float> options) throws Exception {
+    public static String imageToSVG(String encodedImage, HashMap<String, Float> options) throws Exception {
         System.out.println(options.toString());
-        ImageData imgd = loadImageData(filename);
-        return imagedataToSVG(imgd, options, getPalette(ImageIO.read(new File(filename)), options));
+        ImageData imgd = loadImageData(encodedImage);
+        byte[] decodedBytes = Base64.getDecoder().decode(encodedImage);
+        InputStream inputStream = new ByteArrayInputStream(decodedBytes);
+        return imagedataToSVG(imgd, options, getPalette(ImageIO.read(inputStream), options));
     }
 
     // Tracing ImageData, then returning the SVG String
@@ -221,18 +190,6 @@ public class ImageTracer {
         IndexedImage ii = imagedataToTracedata(imgd, options, palette);
         return SVGUtils.getsvgstring(ii, options);
     }
-
-    // Loading an image from a file, tracing when loaded, then returning IndexedImage with tracedata in layers
-    public IndexedImage imageToTracedata(String filename, HashMap<String, Float> options, byte[][] palette) throws Exception {
-        ImageData imgd = loadImageData(filename);
-        return imagedataToTracedata(imgd, options, palette);
-    }
-
-    public IndexedImage imageToTracedata(BufferedImage image, HashMap<String, Float> options, byte[][] palette) {
-        ImageData imgd = loadImageData(image);
-        return imagedataToTracedata(imgd, options, palette);
-    }
-
 
     // Tracing ImageData, then returning IndexedImage with tracedata in layers
     public static IndexedImage imagedataToTracedata(ImageData imgd, HashMap<String, Float> options, byte[][] palette) {
@@ -299,15 +256,5 @@ public class ImageTracer {
         }
 
         return options;
-    }
-
-    public static String removeExtension(String fileName) {
-        int extPos = fileName.lastIndexOf(".");
-        if(extPos == -1) {
-            return fileName;
-        }
-        else {
-            return fileName.substring(0, extPos);
-        }
     }
 }
