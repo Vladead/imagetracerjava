@@ -72,6 +72,7 @@ public class ImageTracer {
                 options = checkoptions(options);
 
                 // Loading image, tracing, rendering, saving output file
+                outFileName = removeExtension(outFileName);
                 saveString(outFileName + ".svg", imageToSVG(args[0], options));
 
             }// End of parameter parsing and processing
@@ -213,24 +214,24 @@ public class ImageTracer {
         System.out.println(options.toString());
         ImageData imgd = loadImageData(filename);
         return imagedataToSVG(imgd, options, getPalette(ImageIO.read(new File(filename)), options));
-    }// End of imageToSVG()
+    }
 
     // Tracing ImageData, then returning the SVG String
     public static String imagedataToSVG(ImageData imgd, HashMap<String, Float> options, byte[][] palette) {
         IndexedImage ii = imagedataToTracedata(imgd, options, palette);
         return SVGUtils.getsvgstring(ii, options);
-    }// End of imagedataToSVG()
+    }
 
     // Loading an image from a file, tracing when loaded, then returning IndexedImage with tracedata in layers
     public IndexedImage imageToTracedata(String filename, HashMap<String, Float> options, byte[][] palette) throws Exception {
         ImageData imgd = loadImageData(filename);
         return imagedataToTracedata(imgd, options, palette);
-    }// End of imageToTracedata()
+    }
 
     public IndexedImage imageToTracedata(BufferedImage image, HashMap<String, Float> options, byte[][] palette) {
         ImageData imgd = loadImageData(image);
         return imagedataToTracedata(imgd, options, palette);
-    }// End of imageToTracedata()
+    }
 
 
     // Tracing ImageData, then returning IndexedImage with tracedata in layers
@@ -246,7 +247,7 @@ public class ImageTracer {
         // 5. Batch tracing
         ii.layers = VectorizingUtils.batchtracelayers(bis, options.get("ltres"), options.get("qtres"));
         return ii;
-    }// End of imagedataToTracedata()
+    }
 
 
     // creating options object, setting defaults for missing values
@@ -298,5 +299,15 @@ public class ImageTracer {
         }
 
         return options;
-    }// End of checkoptions()
-}// End of ImageTracer class
+    }
+
+    public static String removeExtension(String fileName) {
+        int extPos = fileName.lastIndexOf(".");
+        if(extPos == -1) {
+            return fileName;
+        }
+        else {
+            return fileName.substring(0, extPos);
+        }
+    }
+}
