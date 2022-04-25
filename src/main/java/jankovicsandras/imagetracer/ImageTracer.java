@@ -116,7 +116,7 @@ public class ImageTracer {
 
     // Loading a file to ImageData, ARGB byte order
     public static ImageData loadImageData(String encodedImage) throws Exception {
-        byte[] decodedBytes = Base64.getDecoder().decode(encodedImage);
+        byte[] decodedBytes = Base64.getMimeDecoder().decode(encodedImage);
         InputStream inputStream = new ByteArrayInputStream(decodedBytes);
         BufferedImage image = ImageIO.read(inputStream);
         return loadImageData(image);
@@ -180,7 +180,7 @@ public class ImageTracer {
     public static String imageToSVG(String encodedImage, HashMap<String, Float> options) throws Exception {
         System.out.println(options.toString());
         ImageData imgd = loadImageData(encodedImage);
-        byte[] decodedBytes = Base64.getDecoder().decode(encodedImage);
+        byte[] decodedBytes = Base64.getMimeDecoder().decode(encodedImage);
         InputStream inputStream = new ByteArrayInputStream(decodedBytes);
         return imagedataToSVG(imgd, options, getPalette(ImageIO.read(inputStream), options));
     }
